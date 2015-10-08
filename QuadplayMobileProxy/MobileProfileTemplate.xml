@@ -1,0 +1,16 @@
+﻿<?xml version="1.0"?>
+<MBNProfile xmlns="http://www.microsoft.com/networking/WWAN/profile/v1">
+        <Name>Plus</Name>
+        <IsDefault>true</IsDefault>
+        <ProfileCreationType>UserProvisioned</ProfileCreationType>
+        <SubscriberID>CHANGE_THIS</SubscriberID>
+        <SimIccID>CHANGE_THIS</SimIccID>
+        <HomeProviderName>Plus</HomeProviderName>
+        <ConnectionMode>manual</ConnectionMode>
+        <Context>
+                <AccessString>internet</AccessString>
+                <Compression>DISABLE</Compression>
+                <AuthProtocol>NONE</AuthProtocol>
+        </Context>
+        <DisplayProviderName xmlns="http://www.microsoft.com/networking/WWAN/profile/v2">Plus</DisplayProviderName>
+</MBNProfile>
