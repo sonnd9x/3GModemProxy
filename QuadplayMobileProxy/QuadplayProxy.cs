@@ -49,10 +49,10 @@ namespace QuadplayMobileProxy
             ChangeIP();
             proxyListener.Start();
 
-            new Thread(CheckForConnectionThread)
-            {
-                Name = string.Format("ChangeIP-{0} Connection Check", ID)
-            }.Start();
+            //new Thread(CheckForConnectionThread)
+            //{
+            //    Name = string.Format("ChangeIP-{0} Connection Check", ID)
+            //}.Start();
         }
 
         void CheckForConnectionThread()
