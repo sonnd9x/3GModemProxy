@@ -81,13 +81,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ProxyClient.cs" />
-    <Compile Include="HttpProxyClient.cs" />
-    <Compile Include="HttpProxyListener.cs" />
-    <Compile Include="ProxyListener.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="QuadplayProxy.cs" />
+    <Compile Include="TransparentProxy.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
@@ -114,6 +111,12 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TrotiNet-master\Lib\TrotiNet.Lib.csproj">
+      <Project>{7feda61e-ed0a-4357-932e-746c697e464e}</Project>
+      <Name>TrotiNet.Lib</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

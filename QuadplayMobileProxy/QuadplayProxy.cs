@@ -11,6 +11,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using TrotiNet;
+using TrotiNet.Example;
 
 namespace QuadplayMobileProxy
 {
@@ -27,13 +29,13 @@ namespace QuadplayMobileProxy
 
         static string mobileProfileTemplate;
 
-        HttpProxyListener proxyListener;
+        TcpServer proxyListener;
 
         public QuadplayProxy(int id)
         {
             ID = id;
 
-            proxyListener = new HttpProxyListener(IPAddress.Any, ID);
+            proxyListener = new TcpServer(ID, false);
         }
 
         static QuadplayProxy()
@@ -47,12 +49,35 @@ namespace QuadplayMobileProxy
         public void Start()
         {
             ChangeIP();
-            proxyListener.Start();
+            proxyListener.Start(CreateProxy);
 
             //new Thread(CheckForConnectionThread)
             //{
             //    Name = string.Format("ChangeIP-{0} Connection Check", ID)
             //}.Start();
+        }
+
+        public TransparentProxy CreateProxy(HttpSocket clientSocket)
+        {
+            var proxy = new TransparentProxy(clientSocket);
+
+            IPAddress ip = GetIP();
+            int tries = 0;
+            while (ip == null && tries < 5)
+            {
+                Thread.Sleep(500);
+
+                ++tries;
+                ip = GetIP();
+            }
+
+            if (ip != null)
+            {
+                proxy.InterfaceToBind = ip;
+                return proxy;
+            }
+
+            return null;
         }
 
         void CheckForConnectionThread()
@@ -111,7 +136,8 @@ namespace QuadplayMobileProxy
                             {
                                 Console.WriteLine("Changing IP | Proxy ID: {0}", ID);
 
-                                proxyListener.CloseClients();
+                                proxyListener.CloseAllSockets();
+                                //proxyListener.CloseClients();
                                 interfaceConnected = false;
 
                                 try
@@ -156,9 +182,10 @@ namespace QuadplayMobileProxy
                                 }
                                 else
                                 {
-                                    proxyListener.ChangeLocalEndPoint(new IPEndPoint(ip, 0));
+                                    //proxyListener.ChangeLocalEndPoint(new IPEndPoint(ip, 0));
+                                    proxyListener.CloseAllSockets();
 
-                                    Console.WriteLine("IP Changed! | Proxy ID: {0} | Time: {1}", ID, (int)deltaTime.TotalSeconds);
+                                    Console.WriteLine("IP Changed! | Proxy ID: {0} | Time: {1} | Bind: {2}", ID, (int)deltaTime.TotalSeconds, ip);
                                 }
                             }
                             catch (Exception ex)
@@ -266,13 +293,13 @@ namespace QuadplayMobileProxy
 
         public void SetToInterface(string interfaceId)
         {
-            proxyListener.CloseClients();
+            proxyListener.CloseAllSockets();
             InterfaceID = interfaceId;
         }
 
         public void InvalidateInterface()
         {
-            proxyListener.CloseClients();
+            proxyListener.CloseAllSockets();
             InterfaceID = null;
         }
 
