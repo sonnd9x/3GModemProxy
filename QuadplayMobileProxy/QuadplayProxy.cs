@@ -51,10 +51,10 @@ namespace QuadplayMobileProxy
             ChangeIP();
             proxyListener.Start(CreateProxy);
 
-            //new Thread(CheckForConnectionThread)
-            //{
-            //    Name = string.Format("ChangeIP-{0} Connection Check", ID)
-            //}.Start();
+            new Thread(CheckForConnectionThread)
+            {
+                Name = string.Format("ChangeIP-{0} Connection Check", ID)
+            }.Start();
         }
 
         public TransparentProxy CreateProxy(HttpSocket clientSocket)
@@ -97,10 +97,11 @@ namespace QuadplayMobileProxy
                         fails = 0;
                     }
 
-                    if (fails > 3)
+                    if (fails > 2)
                     {
                         ChangeIP(true);
                         Console.WriteLine("No internect connection detected. Restarting. | Proxy ID: {0}", ID);
+                        Thread.Sleep(10000);
                     }
                 }
 
@@ -136,7 +137,9 @@ namespace QuadplayMobileProxy
                             {
                                 Console.WriteLine("Changing IP | Proxy ID: {0}", ID);
 
-                                //proxyListener.CloseAllSockets();
+                                proxyListener.IsPaused = true;
+
+                                proxyListener.CloseAllSockets();
                                 //proxyListener.CloseClients();
                                 interfaceConnected = false;
 
@@ -146,7 +149,8 @@ namespace QuadplayMobileProxy
                                 }
                                 catch (Exception ex)
                                 {
-                                    Console.WriteLine("Error Disconnecting: {0}", ex.ToString());
+                                    //Console.WriteLine("Error Disconnecting: {0}", ex.ToString());
+                                    Console.WriteLine("Error Disconnecting | Proxy ID: {0}", ID);
                                 }
 
                                 Thread.Sleep(3000);
@@ -184,6 +188,9 @@ namespace QuadplayMobileProxy
                                 {
                                     //proxyListener.ChangeLocalEndPoint(new IPEndPoint(ip, 0));
                                     proxyListener.CloseAllSockets();
+
+                                    proxyListener.IsPaused = false;
+                                    //proxyListener.ReconnectAllSockets(ip);
 
                                     Console.WriteLine("IP Changed! | Proxy ID: {0} | Time: {1} | Bind: {2}", ID, (int)deltaTime.TotalSeconds, ip);
                                 }
@@ -239,7 +246,7 @@ namespace QuadplayMobileProxy
                         client.CachePolicy = new RequestCachePolicy(RequestCacheLevel.BypassCache);
 
                         string response = client.DownloadString("http://www.google.com");
-                        return response != null;
+                        return !String.IsNullOrEmpty(response);
                     }
                 }
             }

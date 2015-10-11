@@ -203,8 +203,8 @@
                     port = 443;
                 }
                 else
-                throw new HttpProtocolBroken(
-                    "Expected scheme missing or unsupported");
+                    throw new HttpProtocolBroken(
+                        "Expected scheme missing or unsupported");
             }
 
             // Starting from offset prefix, we now have either:
@@ -222,8 +222,8 @@
             }
             else
                 if (slash > 0) // Strict inequality
-                    // case 2
-                    authority = hrl.URI.Substring(prefix, slash - prefix);
+                               // case 2
+                authority = hrl.URI.Substring(prefix, slash - prefix);
 
             if (authority != null)
             {
@@ -265,7 +265,7 @@
                 return host;
             }
 
-        hostname_from_header:
+            hostname_from_header:
             host = hh_rq.Host;
             if (host == null)
                 throw new HttpProtocolBroken("No host specified");
@@ -333,7 +333,7 @@
     /// <summary>
     /// Implement the full HTTP proxy logic for one browser connection
     /// </summary>
-    public class BaseProxyLogic: AbstractProxyLogic
+    public class BaseProxyLogic : AbstractProxyLogic
     {
         static readonly ILog log = Log.Get();
 
@@ -623,6 +623,17 @@
 
         }
 
+        public void Reconnect()
+        {
+            SocketPSRemote.CloseSocket();
+            SocketPSRemote = null;
+
+            if (wasHandleConnect)
+            {
+                HandleConnect(false);
+            }
+        }
+
         /// <summary>
         /// Handle a websocket handshake and tunnel the two ends
         /// </summary>
@@ -635,23 +646,32 @@
             return;
         }
 
+        bool wasHandleConnect;
+
         /// <summary>
         /// A specific case for the CONNECT command,
         /// connect both ends blindly (will work for HTTPS, SSH and others)
         /// </summary>
-        virtual protected void HandleConnect()
+        virtual protected void HandleConnect(bool respond = true)
         {
+            wasHandleConnect = true;
+
             int NewDestinationPort;
             string NewDestinationHost = ParseDestinationHostAndPort(
                 RequestLine, RequestHeaders, out NewDestinationPort);
             Connect(NewDestinationHost, NewDestinationPort);
-            this.State.NextStep = null;
-            this.SocketBPClient.WriteAsciiLine(string.Format("HTTP/{0} 200 Connection established", RequestLine.ProtocolVersion));
-            this.SocketBPClient.WriteAsciiLine(string.Empty);
+
+            if (respond)
+            {
+                this.State.NextStep = null;
+                this.SocketBPClient.WriteAsciiLine(string.Format("HTTP/{0} 200 Connection established", RequestLine.ProtocolVersion));
+                this.SocketBPClient.WriteAsciiLine(string.Empty);
+            }
+
             var socketsToConnect = new[] { this.SocketBPClient, this.SocketPSRemote };
 
             socketsToConnect
-                .Zip(socketsToConnect.Reverse(), (from, to) => new { from,to })
+                .Zip(socketsToConnect.Reverse(), (from, to) => new { from, to })
                 .AsParallel()
                 .ForAll(team => team.from.TunnelDataTo(team.to));
         }
@@ -769,34 +789,34 @@
             }
             else
                 if (ResponseHeaders.ContentLength != null)
-                {
-                    ResponseMessageLength =
-                        (uint)ResponseHeaders.ContentLength;
-                    if (ResponseMessageLength == 0)
-                        goto no_message_body;
-                }
-                else
-                {
-                    // We really should have been given a response
-                    // length. It appears that some popular websites
-                    // send small files without a transfer-encoding
-                    // or length.
+            {
+                ResponseMessageLength =
+                    (uint)ResponseHeaders.ContentLength;
+                if (ResponseMessageLength == 0)
+                    goto no_message_body;
+            }
+            else
+            {
+                // We really should have been given a response
+                // length. It appears that some popular websites
+                // send small files without a transfer-encoding
+                // or length.
 
-                    // It seems that all of the browsers handle this
-                    // case so we need to as well.
+                // It seems that all of the browsers handle this
+                // case so we need to as well.
 
-                    byte[] buffer = new byte[512];
-                    SocketPSRemote.TunnelDataTo(ref buffer);
+                byte[] buffer = new byte[512];
+                SocketPSRemote.TunnelDataTo(ref buffer);
 
-                    // Transmit the response header to the client
-                    ResponseHeaders.ContentLength = (uint)buffer.Length;
-                    ResponseStatusLine.SendTo(SocketBPClient);
-                    ResponseHeaders.SendTo(SocketBPClient);
+                // Transmit the response header to the client
+                ResponseHeaders.ContentLength = (uint)buffer.Length;
+                ResponseStatusLine.SendTo(SocketBPClient);
+                ResponseHeaders.SendTo(SocketBPClient);
 
-                    SocketBPClient.TunnelDataTo(TunnelBP, buffer);
-                    State.NextStep = null;
-                    return;
-                }
+                SocketBPClient.TunnelDataTo(TunnelBP, buffer);
+                State.NextStep = null;
+                return;
+            }
 
             if (State.OnResponseMessagePacket != null)
             {
@@ -805,11 +825,11 @@
                     SocketPSRemote.TunnelDataTo(State.OnResponseMessagePacket);
                 else
                     if (bResponseMessageChunked)
-                        SocketPSRemote.TunnelChunkedDataTo(
-                            State.OnResponseMessagePacket);
-                    else
-                        SocketPSRemote.TunnelDataTo(State.OnResponseMessagePacket,
-                            ResponseMessageLength);
+                    SocketPSRemote.TunnelChunkedDataTo(
+                        State.OnResponseMessagePacket);
+                else
+                    SocketPSRemote.TunnelDataTo(State.OnResponseMessagePacket,
+                        ResponseMessageLength);
                 State.OnResponseMessagePacket(null, 0, 0);
             }
             else
@@ -819,12 +839,12 @@
                     SocketPSRemote.TunnelDataTo(TunnelBP);
                 else
                     if (bResponseMessageChunked)
-                        SocketPSRemote.TunnelChunkedDataTo(SocketBPClient);
-                    else
-                        SocketPSRemote.TunnelDataTo(TunnelBP, ResponseMessageLength);
+                    SocketPSRemote.TunnelChunkedDataTo(SocketBPClient);
+                else
+                    SocketPSRemote.TunnelDataTo(TunnelBP, ResponseMessageLength);
             }
 
-        no_message_body:
+            no_message_body:
 
             if (!State.bPersistConnectionPS && SocketPSRemote != null)
             {
@@ -849,7 +869,7 @@
     /// <summary>
     /// Wrapper around BaseProxyLogic that adds various utility functions
     /// </summary>
-    public class ProxyLogic: BaseProxyLogic
+    public class ProxyLogic : BaseProxyLogic
     {
         /// <summary>
         /// Instantiate a transparent proxy
@@ -1039,11 +1059,11 @@
                     outS = new DeflateStream(inS, CompressionMode.Decompress);
                 else
                     if (ce.StartsWith("gzip"))
-                        outS = new GZipStream(inS, CompressionMode.Decompress);
-                    else
+                    outS = new GZipStream(inS, CompressionMode.Decompress);
+                else
                         if (!ce.StartsWith("identity"))
-                            throw new TrotiNet.RuntimeException(
-                                "Unsupported Content-Encoding '" + ce + "'");
+                    throw new TrotiNet.RuntimeException(
+                        "Unsupported Content-Encoding '" + ce + "'");
             }
 
             if (outS == null)

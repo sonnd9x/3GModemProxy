@@ -82,6 +82,8 @@ namespace TrotiNet
         /// </summary>
         protected bool IsShuttingDown { get; private set; }
 
+        public bool IsPaused { get; set; }
+
         /// <summary>
         /// Incremented at every client connection
         /// </summary>
@@ -128,6 +130,8 @@ namespace TrotiNet
             ListeningThread = null;
         }
 
+        List<AbstractProxyLogic> proxyLogicList = new List<AbstractProxyLogic>();
+
         /// <summary>
         /// Callback method for accepting new connections
         /// </summary>
@@ -156,6 +160,11 @@ namespace TrotiNet
             log.Debug("\tAcceptCallback sent signal");
 #endif
 
+            while (IsPaused)
+            {
+                Thread.Sleep(500);
+            }
+
             // Create the state object
             HttpSocket state = new HttpSocket(handler);
             state.id = ++LastClientId;
@@ -167,11 +176,17 @@ namespace TrotiNet
             try
             {
                 proxy = OnClientStart(state);
-            } catch (Exception e) { log.Error(e); }
+            }
+            catch (Exception e) { log.Error(e); }
             if (proxy == null)
             {
                 CloseSocket(state);
                 return;
+            }
+
+            lock (proxyLogicList)
+            {
+                proxyLogicList.Add(proxy);
             }
 
             // No need for asynchronous I/O from now on
@@ -189,6 +204,11 @@ namespace TrotiNet
             {
                 log.Error(e);
                 log.Debug("Closing socket on error");
+            }
+
+            lock (proxyLogicList)
+            {
+                proxyLogicList.Remove(proxy);
             }
 
             CloseSocket(state);
@@ -246,21 +266,38 @@ namespace TrotiNet
             state.CloseSocket();
         }
 
+        public void ReconnectAllSockets(IPAddress ip)
+        {
+            lock (proxyLogicList)
+            {
+                foreach (var proxyA in proxyLogicList)
+                {
+                    ProxyLogic proxy = (ProxyLogic)proxyA;
+                    proxy.InterfaceToBind = ip;
+                    proxy.Reconnect();
+                }
+            }
+        }
+
         public void CloseAllSockets()
         {
             try
             {
-                var list = ConnectedSockets.Values.ToList();
-
-                for (int n = list.Count - 1; n >= 0; --n)
+                lock (ConnectedSockets)
                 {
-                    try
+                    var list = ConnectedSockets.Values.ToList();
+
+                    for (int n = list.Count - 1; n >= 0; --n)
                     {
-                        list[n].CloseSocket();
-                    }
-                    catch (Exception e)
-                    {
-                        log.Error(e);
+                        try
+                        {
+                            CloseSocket(list[n]);
+                            //list[n].CloseSocket();
+                        }
+                        catch (Exception e)
+                        {
+                            log.Error(e);
+                        }
                     }
                 }
             }
@@ -416,7 +453,8 @@ namespace TrotiNet
                         sock.Connect(new IPEndPoint(IPAddress.Loopback,
                             this.LocalPort));
                         sock.Close();
-                    } catch { /* ignore */ }
+                    }
+                    catch { /* ignore */ }
                 }
 
                 if (ListeningThread.ThreadState == ThreadState.WaitSleepJoin)
@@ -424,7 +462,7 @@ namespace TrotiNet
                 Thread.Sleep(1000);
                 ListeningThread.Abort();
             }
-            
+
             ListeningThread = null;
             IsListening = false;
 
