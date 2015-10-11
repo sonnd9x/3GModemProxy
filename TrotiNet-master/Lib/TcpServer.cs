@@ -19,6 +19,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Linq;
 using log4net;
 
 [assembly: InternalsVisibleTo("TrotiNet.Test")]
@@ -247,13 +248,11 @@ namespace TrotiNet
 
         public void CloseAllSockets()
         {
-            foreach (var socket in ConnectedSockets.Values)
+            var list = ConnectedSockets.Values.ToList();
+
+            for(int n = list.Count - 1; n >= 0; --n)
             {
-                try
-                {
-                    socket.CloseSocket();
-                }
-                catch { }
+                list[n].CloseSocket();
             }
         }
 

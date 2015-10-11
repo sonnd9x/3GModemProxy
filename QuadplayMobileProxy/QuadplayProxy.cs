@@ -136,7 +136,7 @@ namespace QuadplayMobileProxy
                             {
                                 Console.WriteLine("Changing IP | Proxy ID: {0}", ID);
 
-                                proxyListener.CloseAllSockets();
+                                //proxyListener.CloseAllSockets();
                                 //proxyListener.CloseClients();
                                 interfaceConnected = false;
 
