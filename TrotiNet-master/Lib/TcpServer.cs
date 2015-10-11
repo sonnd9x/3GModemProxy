@@ -248,11 +248,25 @@ namespace TrotiNet
 
         public void CloseAllSockets()
         {
-            var list = ConnectedSockets.Values.ToList();
-
-            for(int n = list.Count - 1; n >= 0; --n)
+            try
             {
-                list[n].CloseSocket();
+                var list = ConnectedSockets.Values.ToList();
+
+                for (int n = list.Count - 1; n >= 0; --n)
+                {
+                    try
+                    {
+                        list[n].CloseSocket();
+                    }
+                    catch (Exception e)
+                    {
+                        log.Error(e);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                log.Error(e);
             }
         }
 
