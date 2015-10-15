@@ -56,9 +56,9 @@ namespace QuadplayMobileProxy
                         Thread.Sleep(5000);
                     }
                 })
-                {
-                    Name = "RefreshInterfaces",
-                }.Start();
+            {
+                Name = "RefreshInterfaces",
+            }.Start();
 
             while (true)
             {
@@ -83,7 +83,7 @@ namespace QuadplayMobileProxy
                     }
                 }
 
-                Thread.Sleep(100);
+                Thread.Sleep(50);
             }
         }
 
@@ -149,68 +149,75 @@ namespace QuadplayMobileProxy
             {
                 while (listener.IsListening)
                 {
-                    HttpListenerContext context = listener.GetContext();
-
-                    HttpListenerRequest request = context.Request;
-                    HttpListenerResponse response = context.Response;
-
-                    string responseString;
-
-                    //Console.WriteLine("Received request: {0}", request.RawUrl);
-
-                    if (request.RawUrl.StartsWith("/changeip"))
+                    try
                     {
-                        string[] splitted = request.RawUrl.Split('?');
-                        int proxyId = Int32.Parse(splitted[1]);
+                        HttpListenerContext context = listener.GetContext();
 
-                        //Console.WriteLine("Received request to change ip. Proxy ID: {0}", proxyId);
+                        HttpListenerRequest request = context.Request;
+                        HttpListenerResponse response = context.Response;
 
-                        lock (proxiesToChangeIP)
+                        string responseString;
+
+                        //Console.WriteLine("Received request: {0}", request.RawUrl);
+
+                        if (request.RawUrl.StartsWith("/changeip"))
                         {
-                            proxiesToChangeIP.Add(proxyId);
+                            string[] splitted = request.RawUrl.Split('?');
+                            int proxyId = Int32.Parse(splitted[1]);
+
+                            //Console.WriteLine("Received request to change ip. Proxy ID: {0}", proxyId);
+
+                            lock (proxiesToChangeIP)
+                            {
+                                proxiesToChangeIP.Add(proxyId);
+                            }
+
+                            string number = quadplayProxyList.Where(el => el.ID == proxyId).FirstOrDefault().GetMobileNumber();
+
+                            responseString = "OK;10000;" + number;
+                        }
+                        else if (request.RawUrl.StartsWith("/getmobilenumber"))
+                        {
+                            string[] splitted = request.RawUrl.Split('?');
+                            int proxyId = Int32.Parse(splitted[1]);
+
+                            string number = quadplayProxyList.Where(el => el.ID == proxyId).FirstOrDefault().GetMobileNumber();
+
+                            responseString = "OK;" + number;
+                        }
+                        else if (request.RawUrl == "/proxylist")
+                        {
+                            //Console.WriteLine("Received request to get proxies");
+
+                            StringWriter stringWriter = new StringWriter();
+                            stringWriter.Write("AVAIL");
+
+                            foreach (var qproxy in quadplayProxyList)
+                            {
+                                stringWriter.Write(";{0}", qproxy.ID);
+                            }
+
+                            responseString = stringWriter.ToString();
+                        }
+                        else
+                        {
+                            Console.WriteLine("Received bad request: {0}", request.RawUrl);
+
+                            responseString = "WRONG_URL";
                         }
 
-                        string number = quadplayProxyList.Where(el => el.ID == proxyId).First().GetMobileNumber();
+                        response.StatusCode = 200;
 
-                        responseString = "OK;10000;" + number;
+                        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+                        response.ContentLength64 = buffer.Length;
+
+                        response.OutputStream.Write(buffer, 0, buffer.Length);
+                        response.OutputStream.Close();
                     }
-                    else if (request.RawUrl.StartsWith("/getmobilenumber"))
+                    catch (Exception ex)
                     {
-                        string[] splitted = request.RawUrl.Split('?');
-                        int proxyId = Int32.Parse(splitted[1]);
-
-                        string number = quadplayProxyList.Where(el => el.ID == proxyId).First().GetMobileNumber();
-
-                        responseString = "OK;" + number;
+                        Console.Error.WriteLine(ex);
                     }
-                    else if (request.RawUrl == "/proxylist")
-                    {
-                        //Console.WriteLine("Received request to get proxies");
-
-                        StringWriter stringWriter = new StringWriter();
-                        stringWriter.Write("AVAIL");
-
-                        foreach (var qproxy in quadplayProxyList)
-                        {
-                            stringWriter.Write(";{0}", qproxy.ID);
-                        }
-
-                        responseString = stringWriter.ToString();
-                    }
-                    else
-                    {
-                        Console.WriteLine("Received bad request: {0}", request.RawUrl);
-
-                        responseString = "WRONG_URL";
-                    }
-
-                    response.StatusCode = 200;
-
-                    byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
-                    response.ContentLength64 = buffer.Length;
-
-                    response.OutputStream.Write(buffer, 0, buffer.Length);
-                    response.OutputStream.Close();
                 }
 
                 listener.Stop();
