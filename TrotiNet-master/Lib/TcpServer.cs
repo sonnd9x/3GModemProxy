@@ -14,6 +14,7 @@
 //#define DEBUG_ACCEPT_CONNECTION
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -247,7 +248,9 @@ namespace TrotiNet
 
         public void CloseAllSockets()
         {
-            foreach (var socket in ConnectedSockets.Values)
+            var list = ConnectedSockets.Values.ToList();
+
+            foreach (var socket in list)
             {
                 try
                 {

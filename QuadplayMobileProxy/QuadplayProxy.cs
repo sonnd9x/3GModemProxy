@@ -121,7 +121,7 @@ namespace QuadplayMobileProxy
             {
                 TimeSpan deltaTime = DateTime.Now - lastChangeIPTime;
 
-                if (!forced && deltaTime < TimeSpan.FromSeconds(15))
+                if (!forced && deltaTime < TimeSpan.FromSeconds(5))
                 {
                     return;
                 }
@@ -149,7 +149,7 @@ namespace QuadplayMobileProxy
                                     Console.WriteLine("Error Disconnecting: {0}", ex.ToString());
                                 }
 
-                                Thread.Sleep(3000);
+                                Thread.Sleep(6000);
 
                                 try
                                 {
