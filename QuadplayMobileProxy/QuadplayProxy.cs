@@ -194,9 +194,9 @@ namespace QuadplayMobileProxy
                             }
                         }
                     })
-                    {
-                        Name = "ChangeIP-" + ID,
-                    }.Start();
+                {
+                    Name = "ChangeIP-" + ID,
+                }.Start();
             }
         }
 
@@ -264,6 +264,10 @@ namespace QuadplayMobileProxy
             //Console.WriteLine("Profile: " + xml.OuterXml);
 
             IMbnConnection conn = inf.GetConnection();
+
+            //MBN_ACTIVATION_STATE state;
+            //string profile;
+            //conn.GetConnectionState(out state, out profile);
 
             uint requestId;
 
