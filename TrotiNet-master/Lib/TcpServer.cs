@@ -248,7 +248,12 @@ namespace TrotiNet
 
         public void CloseAllSockets()
         {
-            var list = ConnectedSockets.Values.ToList();
+            List<HttpSocket> list;
+
+            lock (ConnectedSockets)
+            {
+                list = ConnectedSockets.Values.ToList();
+            }
 
             foreach (var socket in list)
             {

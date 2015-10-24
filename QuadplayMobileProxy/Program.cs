@@ -16,6 +16,7 @@ namespace QuadplayMobileProxy
 
         static List<int> proxiesToChangeIP = new List<int>();
         static List<QuadplayProxy> quadplayProxyList = new List<QuadplayProxy>();
+        public static bool screenEnabled = true;
 
         static void Main(string[] args)
         {
@@ -185,9 +186,34 @@ namespace QuadplayMobileProxy
 
                             responseString = "OK;" + number;
                         }
+                        else if (request.RawUrl.StartsWith("/screenon"))
+                        {
+                            string[] splitted = request.RawUrl.Split('?');
+                            string p1 = splitted[1].ToString();
+                            if (p1.Equals("set"))
+                            {
+                                Boolean.TryParse(splitted[2], out screenEnabled);
+
+                                if (screenEnabled)
+                                    responseString = "OK;enabled";
+                                else
+                                    responseString = "OK;disabled";
+                            }
+                            else if (p1.Equals("check"))
+                            {
+                                if (screenEnabled)
+                                    responseString = "enabled";
+                                else
+                                    responseString = "disabled";
+                            }
+                            else
+                            {
+                                responseString = "Bad request";
+                            }
+                        }
                         else if (request.RawUrl == "/proxylist")
                         {
-                            //Console.WriteLine("Received request to get proxies");
+                        //Console.WriteLine("Received request to get proxies");
 
                             StringWriter stringWriter = new StringWriter();
                             stringWriter.Write("AVAIL");
