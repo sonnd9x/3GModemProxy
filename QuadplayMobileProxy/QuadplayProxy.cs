@@ -44,6 +44,11 @@ namespace QuadplayMobileProxy
         }
 
         DateTime lastChangeIPTime;
+        TimeSpan deltaTime;
+        bool changeIP;
+        bool changeIPForced;
+        bool makeIPCheck;
+
         bool interfaceConnected;
 
         public void Start()
@@ -51,10 +56,131 @@ namespace QuadplayMobileProxy
             ChangeIP();
             proxyListener.Start(CreateProxy);
 
-            new Thread(CheckForConnectionThread)
+            //new Thread(CheckForConnectionThread)
+            //{
+            //    Name = string.Format("ChangeIP-{0} Connection Check", ID)
+            //}.Start();
+
+            new Thread(() =>
             {
-                Name = string.Format("ChangeIP-{0} Connection Check", ID)
-            }.Start();
+                while (true)
+                {
+                    try
+                    {
+                        if (changeIP || changeIPForced)
+                        {
+                            changeIP = false;
+                            changeIPForced = false;
+
+                            DoProxyChange();
+                        }
+                        else
+                        {
+                            Thread.Sleep(100);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error.WriteLine(e);
+                    }
+                }
+            })
+            { Name = "ProxyWorkThread-" + ID }.Start();
+
+            new Thread(() =>
+            {
+                while (true)
+                {
+                    try
+                    {
+                        if (makeIPCheck)
+                        {
+                            makeIPCheck = false;
+                            Console.WriteLine("Doing IP Check. Proxy: {0}", ID);
+                            DoIPCheck();
+                        }
+                        else
+                        {
+                            Thread.Sleep(100);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error.WriteLine(e);
+                    }
+                }
+            })
+            { Name = "ProxyIPCheck-" + ID }.Start();
+        }
+
+        void DoProxyChange()
+        {
+            Console.WriteLine("Changing IP | Proxy ID: {0}", ID);
+
+            proxyListener.IsPaused = true;
+
+            proxyListener.CloseAllSockets();
+            //proxyListener.CloseClients();
+            interfaceConnected = false;
+
+            try
+            {
+                ExecuteAction(ActionType.Disconnect);
+            }
+            catch (Exception ex)
+            {
+                //Console.WriteLine("Error Disconnecting: {0}", ex.ToString());
+                Console.WriteLine("Error Disconnecting | Proxy ID: {0}", ID);
+            }
+
+            Thread.Sleep(6000);
+
+            try
+            {
+                ExecuteAction(ActionType.Connect);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error Connecting: {0}", ex.ToString());
+            }
+
+            Thread.Sleep(5000);
+
+            IPAddress ip = null;
+            int tries = 0;
+
+            while (ip == null && tries < 10)
+            {
+                Thread.Sleep(500);
+
+                ++tries;
+                ip = GetIP();
+            }
+
+            interfaceConnected = true;
+
+            if (ip == null)
+            {
+                Console.WriteLine("Couldnt get interface IP! | Proxy ID: {0} | Time: {1}", ID, (int)deltaTime.TotalSeconds);
+                ChangeIP(true);
+            }
+            else
+            {
+                //proxyListener.ChangeLocalEndPoint(new IPEndPoint(ip, 0));
+                proxyListener.CloseAllSockets();
+
+                proxyListener.IsPaused = false;
+                //proxyListener.ReconnectAllSockets(ip);
+
+                Console.WriteLine("IP Changed! | Proxy ID: {0} | Time: {1} | Bind: {2}", ID, (int)deltaTime.TotalSeconds, ip);
+
+                //new Thread(() =>
+                //{
+                //    DoIPCheck();
+                //}).Start();
+
+                makeIPCheck = true;
+            }
         }
 
         public TransparentProxy CreateProxy(HttpSocket clientSocket)
@@ -80,34 +206,34 @@ namespace QuadplayMobileProxy
             return null;
         }
 
-        void CheckForConnectionThread()
-        {
-            int fails = 0;
+        //void CheckForConnectionThread()
+        //{
+        //    int fails = 0;
 
-            while (true)
-            {
-                if (interfaceConnected)
-                {
-                    if (!CheckForInternetConnection())
-                    {
-                        ++fails;
-                    }
-                    else
-                    {
-                        fails = 0;
-                    }
+        //    while (true)
+        //    {
+        //        if (interfaceConnected)
+        //        {
+        //            if (!CheckForInternetConnection())
+        //            {
+        //                ++fails;
+        //            }
+        //            else
+        //            {
+        //                fails = 0;
+        //            }
 
-                    if (fails > 2)
-                    {
-                        ChangeIP(true);
-                        Console.WriteLine("No internect connection detected. Restarting. | Proxy ID: {0}", ID);
-                        Thread.Sleep(10000);
-                    }
-                }
+        //            if (fails > 2)
+        //            {
+        //                ChangeIP(true);
+        //                Console.WriteLine("No internect connection detected. Restarting. | Proxy ID: {0}", ID);
+        //                Thread.Sleep(10000);
+        //            }
+        //        }
 
-                Thread.Sleep(1000);
-            }
-        }
+        //        Thread.Sleep(1000);
+        //    }
+        //}
 
         public void ChangeIP()
         {
@@ -120,91 +246,54 @@ namespace QuadplayMobileProxy
         {
             lock (this)
             {
-                TimeSpan deltaTime = DateTime.Now - lastChangeIPTime;
+                deltaTime = DateTime.Now - lastChangeIPTime;
 
                 if (!forced && deltaTime < TimeSpan.FromSeconds(5))
-                {
                     return;
-                }
 
                 lastChangeIPTime = DateTime.Now;
-
-                new Thread(() =>
-                    {
-                        lock (internalThreadLocker)
-                        {
-                            try
-                            {
-                                Console.WriteLine("Changing IP | Proxy ID: {0}", ID);
-
-                                proxyListener.IsPaused = true;
-
-                                proxyListener.CloseAllSockets();
-                                //proxyListener.CloseClients();
-                                interfaceConnected = false;
-
-                                try
-                                {
-                                    ExecuteAction(ActionType.Disconnect);
-                                }
-                                catch (Exception ex)
-                                {
-                                    //Console.WriteLine("Error Disconnecting: {0}", ex.ToString());
-                                    Console.WriteLine("Error Disconnecting | Proxy ID: {0}", ID);
-                                }
-
-                                Thread.Sleep(6000);
-
-                                try
-                                {
-                                    ExecuteAction(ActionType.Connect);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine("Error Connecting: {0}", ex.ToString());
-                                }
-
-                                Thread.Sleep(5000);
-
-                                IPAddress ip = null;
-                                int tries = 0;
-
-                                while (ip == null && tries < 10)
-                                {
-                                    Thread.Sleep(500);
-
-                                    ++tries;
-                                    ip = GetIP();
-                                }
-
-                                interfaceConnected = true;
-
-                                if (ip == null)
-                                {
-                                    Console.WriteLine("Couldnt get interface IP! | Proxy ID: {0} | Time: {1}", ID, (int)deltaTime.TotalSeconds);
-                                    ChangeIP(true);
-                                }
-                                else
-                                {
-                                    //proxyListener.ChangeLocalEndPoint(new IPEndPoint(ip, 0));
-                                    proxyListener.CloseAllSockets();
-
-                                    proxyListener.IsPaused = false;
-                                    //proxyListener.ReconnectAllSockets(ip);
-
-                                    Console.WriteLine("IP Changed! | Proxy ID: {0} | Time: {1} | Bind: {2}", ID, (int)deltaTime.TotalSeconds, ip);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine(ex.ToString());
-                            }
-                        }
-                    })
-                {
-                    Name = "ChangeIP-" + ID,
-                }.Start();
+                changeIP = true;
             }
+        }
+
+        List<string> lastIpList = new List<string>();
+
+        void DoIPCheck()
+        {
+            for (int n = 0; n < 5; ++n)
+            {
+                string ip;
+                if (CheckForInternetConnection(out ip))
+                {
+                    if (ip != null)
+                    {
+                        if (lastIpList.Contains(ip))
+                        {
+                            Console.WriteLine("Current IP already seen. Changing. Proxy: {0} : IP: {1}", ID, ip);
+                            changeIPForced = true;
+                            return;
+                        }
+                        else
+                        {
+                            Console.WriteLine("New IP looks good. Proxy: {0} : IP: {1}", ID, ip);
+
+                            lastIpList.Add(ip);
+                            while (lastIpList.Count > 15)
+                            {
+                                lastIpList.RemoveAt(0);
+                            }
+
+                            return;
+                        }
+                    }
+                }
+
+                Console.WriteLine("No Connection Detected. Proxy: {0}", ID);
+                Thread.Sleep(1000);
+            }
+
+            Console.WriteLine("Too many failed connections. Changing. Proxy: {0}", ID);
+            changeIPForced = true;
         }
 
         class MyWebClient : WebClient
@@ -229,8 +318,10 @@ namespace QuadplayMobileProxy
             }
         }
 
-        bool CheckForInternetConnection()
+        bool CheckForInternetConnection(out string externalIP)
         {
+            externalIP = null;
+
             try
             {
                 IPAddress ip = GetIP();
@@ -241,13 +332,54 @@ namespace QuadplayMobileProxy
                 }
                 else
                 {
-                    using (var client = new MyWebClient(ip))
-                    {
-                        client.CachePolicy = new RequestCachePolicy(RequestCacheLevel.BypassCache);
+                    string detectedIp = null;
+                    bool successDetected = false;
 
-                        string response = client.DownloadString("http://www.google.com");
-                        return !String.IsNullOrEmpty(response);
+                    var httpThread = new Thread(() =>
+                    {
+                        HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://checkip.dyndns.org");
+                        request.ServicePoint.BindIPEndPointDelegate = new BindIPEndPoint((ServicePoint servicePoint, IPEndPoint remoteEndPoint, int retryCount) =>
+                            {
+                                Console.WriteLine("BindIPEndpoint called. Binding to: {0} Retry: {1}", ip, retryCount);
+                                return new IPEndPoint(ip, 0);
+                            });
+                        request.Timeout = 5000;
+                        request.ContinueTimeout = 5000;
+                        request.ReadWriteTimeout = 5000;
+                        request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.NoCacheNoStore);
+
+                        using (var stream = request.GetResponse().GetResponseStream())
+                        using (StreamReader sr = new StreamReader(stream))
+                        {
+                            string response = sr.ReadToEnd().Trim();
+
+                            Console.WriteLine("Got chceck response. Proxy: {0} : Response: {1}", ID, response);
+
+                            string[] a = response.Split(':');
+                            string a2 = a[1].Substring(1);
+                            string[] a3 = a2.Split('<');
+                            string a4 = a3[0];
+
+                            detectedIp = a4;
+                            successDetected = true;
+                        }
+                    });
+
+                    httpThread.Start();
+                    httpThread.Join(TimeSpan.FromSeconds(8));
+
+                    try
+                    {
+                        if (httpThread.IsAlive)
+                            httpThread.Abort();
                     }
+                    catch (Exception e)
+                    {
+                        Console.Error.WriteLine(e);
+                    }
+
+                    externalIP = detectedIp;
+                    return successDetected;
                 }
             }
             catch
