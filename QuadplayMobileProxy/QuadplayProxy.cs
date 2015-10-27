@@ -337,31 +337,46 @@ namespace QuadplayMobileProxy
 
                     var httpThread = new Thread(() =>
                     {
-                        HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://checkip.dyndns.org");
-                        request.ServicePoint.BindIPEndPointDelegate = new BindIPEndPoint((ServicePoint servicePoint, IPEndPoint remoteEndPoint, int retryCount) =>
-                            {
-                                Console.WriteLine("BindIPEndpoint called. Binding to: {0} Retry: {1}", ip, retryCount);
-                                return new IPEndPoint(ip, 0);
-                            });
-                        request.Timeout = 5000;
-                        request.ContinueTimeout = 5000;
-                        request.ReadWriteTimeout = 5000;
-                        request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.NoCacheNoStore);
-
-                        using (var stream = request.GetResponse().GetResponseStream())
-                        using (StreamReader sr = new StreamReader(stream))
+                        try
                         {
-                            string response = sr.ReadToEnd().Trim();
+                            HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://checkip.dyndns.org");
+                            request.ServicePoint.BindIPEndPointDelegate = new BindIPEndPoint((ServicePoint servicePoint, IPEndPoint remoteEndPoint, int retryCount) =>
+                                {
+                                    Console.WriteLine("BindIPEndpoint called. Binding to: {0} Retry: {1}", ip, retryCount);
 
-                            Console.WriteLine("Got chceck response. Proxy: {0} : Response: {1}", ID, response);
+                                    if (retryCount > 3)
+                                        Thread.Sleep(500);
 
-                            string[] a = response.Split(':');
-                            string a2 = a[1].Substring(1);
-                            string[] a3 = a2.Split('<');
-                            string a4 = a3[0];
+                                    return new IPEndPoint(ip, 0);
+                                });
+                            request.Timeout = 5000;
+                            request.ContinueTimeout = 5000;
+                            request.ReadWriteTimeout = 5000;
+                            request.CachePolicy = new HttpRequestCachePolicy(HttpRequestCacheLevel.NoCacheNoStore);
 
-                            detectedIp = a4;
-                            successDetected = true;
+                            using (var stream = request.GetResponse().GetResponseStream())
+                            using (StreamReader sr = new StreamReader(stream))
+                            {
+                                string response = sr.ReadToEnd().Trim();
+
+                                Console.WriteLine("Got chceck response. Proxy: {0} : Response: {1}", ID, response);
+
+                                string[] a = response.Split(':');
+                                string a2 = a[1].Substring(1);
+                                string[] a3 = a2.Split('<');
+                                string a4 = a3[0];
+
+                                detectedIp = a4;
+                                successDetected = true;
+                            }
+                        }
+                        catch (ThreadAbortException)
+                        {
+                            Console.WriteLine("Aborting connection check. Proxy: {0}", ID);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.Error.WriteLine(e);
                         }
                     });
 
