@@ -259,7 +259,7 @@ namespace TrotiNet
                 if (!ConnectedSockets.TryGetValue(state.id, out actual_state))
                     return;
 
-                System.Diagnostics.Debug.Assert(actual_state == state);
+                //System.Diagnostics.Debug.Assert(actual_state == state);
                 ConnectedSockets.Remove(state.id);
             }
 

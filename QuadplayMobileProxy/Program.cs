@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,8 +23,7 @@ namespace QuadplayMobileProxy
         {
             Console.SetOut(new CustomTextWriter(Console.Out));
 
-            IMbnInterfaceManager interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
-
+            //IMbnInterfaceManager interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
             //InterfaceManager = interfaceManager;
 
             int staringPort = Int32.Parse(args[0]);
@@ -92,12 +92,27 @@ namespace QuadplayMobileProxy
         {
             List<string> infIdList = new List<string>();
 
-            IMbnInterfaceManager interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
+            IMbnInterfaceManager interfaceManager = null;
 
-            foreach (var obj in interfaceManager.GetInterfaces())
+            try
             {
-                IMbnInterface inf = (IMbnInterface)obj;
-                infIdList.Add(inf.InterfaceID);
+                interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
+
+                foreach (var obj in interfaceManager.GetInterfaces())
+                {
+                    try
+                    {
+                        IMbnInterface inf = (IMbnInterface)obj;
+                        infIdList.Add(inf.InterfaceID);
+                        Marshal.FinalReleaseComObject(inf);
+                    }
+                    catch { }
+                }
+            }
+            finally
+            {
+                if (interfaceManager != null)
+                    Marshal.FinalReleaseComObject(interfaceManager);
             }
 
             foreach (var qproxy in quadplayProxyList)

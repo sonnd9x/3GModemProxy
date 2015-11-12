@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Cache;
 using System.Net.NetworkInformation;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -405,33 +406,59 @@ namespace QuadplayMobileProxy
 
         void ExecuteAction(ActionType action)
         {
-            IMbnInterfaceManager interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
-            IMbnInterface inf = interfaceManager.GetInterface(InterfaceID);
-            IMbnSubscriberInformation subscriber = inf.GetSubscriberInformation();
+            IMbnInterfaceManager interfaceManager = null;
+            IMbnInterface inf = null;
+            IMbnSubscriberInformation subscriber = null;
 
-            XmlDocument xml = new XmlDocument();
-            xml.LoadXml(mobileProfileTemplate);
-
-            xml["MBNProfile"]["SubscriberID"].InnerText = subscriber.SubscriberID;
-            xml["MBNProfile"]["SimIccID"].InnerText = subscriber.SimIccID;
-
-            //Console.WriteLine("Profile: " + xml.OuterXml);
-
-            IMbnConnection conn = inf.GetConnection();
-
-            //MBN_ACTIVATION_STATE state;
-            //string profile;
-            //conn.GetConnectionState(out state, out profile);
-
-            uint requestId;
-
-            if (action == ActionType.Connect)
+            try
             {
-                conn.Connect(MBN_CONNECTION_MODE.MBN_CONNECTION_MODE_TMP_PROFILE, xml.OuterXml, out requestId);
+                interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
+                inf = interfaceManager.GetInterface(InterfaceID);
+                subscriber = inf.GetSubscriberInformation();
+
+                XmlDocument xml = new XmlDocument();
+                xml.LoadXml(mobileProfileTemplate);
+
+                xml["MBNProfile"]["SubscriberID"].InnerText = subscriber.SubscriberID;
+                xml["MBNProfile"]["SimIccID"].InnerText = subscriber.SimIccID;
+
+                //Console.WriteLine("Profile: " + xml.OuterXml);
+
+                IMbnConnection conn = null;
+
+                try
+                {
+                    conn = inf.GetConnection();
+
+                    //MBN_ACTIVATION_STATE state;
+                    //string profile;
+                    //conn.GetConnectionState(out state, out profile);
+
+                    uint requestId;
+
+                    if (action == ActionType.Connect)
+                    {
+                        conn.Connect(MBN_CONNECTION_MODE.MBN_CONNECTION_MODE_TMP_PROFILE, xml.OuterXml, out requestId);
+                    }
+                    else
+                    {
+                        conn.Disconnect(out requestId);
+                    }
+                }
+                finally
+                {
+                    if (conn != null)
+                        Marshal.FinalReleaseComObject(conn);
+                }
             }
-            else
+            finally
             {
-                conn.Disconnect(out requestId);
+                if (subscriber != null)
+                    Marshal.FinalReleaseComObject(subscriber);
+                if (inf != null)
+                    Marshal.FinalReleaseComObject(inf);
+                if (interfaceManager != null)
+                    Marshal.FinalReleaseComObject(interfaceManager);
             }
         }
 
@@ -463,11 +490,15 @@ namespace QuadplayMobileProxy
 
         public string GetMobileNumber()
         {
+            IMbnInterfaceManager interfaceManager = null;
+            IMbnInterface inf = null;
+            IMbnSubscriberInformation subscriber = null;
+
             try
             {
-                IMbnInterfaceManager interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
-                IMbnInterface inf = interfaceManager.GetInterface(InterfaceID);
-                IMbnSubscriberInformation subscriber = inf.GetSubscriberInformation();
+                interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
+                inf = interfaceManager.GetInterface(InterfaceID);
+                subscriber = inf.GetSubscriberInformation();
 
                 foreach (var ob in subscriber.TelephoneNumbers)
                 {
@@ -478,6 +509,15 @@ namespace QuadplayMobileProxy
                 }
             }
             catch { }
+            finally
+            {
+                if (subscriber != null)
+                    Marshal.FinalReleaseComObject(subscriber);
+                if (inf != null)
+                    Marshal.FinalReleaseComObject(inf);
+                if (interfaceManager != null)
+                    Marshal.FinalReleaseComObject(interfaceManager);
+            }
 
             return "Unknown";
         }
