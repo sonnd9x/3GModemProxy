@@ -15,8 +15,11 @@ namespace QuadplayMobileProxy
     {
         //public static IMbnInterfaceManager InterfaceManager { get; private set; }
 
+        static Random random = new Random();
+
         static List<int> proxiesToChangeIP = new List<int>();
         static List<QuadplayProxy> quadplayProxyList = new List<QuadplayProxy>();
+
         public static bool screenEnabled = true;
 
         static int nextID;
@@ -157,14 +160,17 @@ namespace QuadplayMobileProxy
                 {
                     bool added = false;
 
-                    foreach (var qproxy in quadplayProxyList)
+                    lock (quadplayProxyList)
                     {
-                        if (qproxy.InterfaceID == null)
+                        foreach (var qproxy in quadplayProxyList.OrderBy(el => random.Next()))
                         {
-                            qproxy.SetToInterface(infId);
-                            Console.WriteLine("Binded Proxy: {0} To Interface: {1}", qproxy.ID, qproxy.InterfaceID);
-                            added = true;
-                            break;
+                            if (qproxy.InterfaceID == null)
+                            {
+                                qproxy.SetToInterface(infId);
+                                Console.WriteLine("Binded Proxy: {0} To Interface: {1}", qproxy.ID, qproxy.InterfaceID);
+                                added = true;
+                                break;
+                            }
                         }
                     }
 
