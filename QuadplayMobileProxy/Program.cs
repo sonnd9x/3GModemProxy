@@ -19,6 +19,8 @@ namespace QuadplayMobileProxy
         static List<QuadplayProxy> quadplayProxyList = new List<QuadplayProxy>();
         public static bool screenEnabled = true;
 
+        static int nextID;
+
         static void Main(string[] args)
         {
             Console.SetOut(new CustomTextWriter(Console.Out));
@@ -29,22 +31,19 @@ namespace QuadplayMobileProxy
             int staringPort = Int32.Parse(args[0]);
             Console.WriteLine("Listening start port: {0}", staringPort);
 
-            int proxyCount = Int32.Parse(args[1]);
-            Console.WriteLine("Starting {0} Proxies", proxyCount);
+            //int proxyCount = Int32.Parse(args[1]);
+            //Console.WriteLine("Starting {0} Proxies", proxyCount);
 
-            int nextID = staringPort + 1;
+            nextID = staringPort + 1;
 
-            for (int n = 0; n < proxyCount; ++n)
-            {
-                quadplayProxyList.Add(new QuadplayProxy(nextID++));
-            }
+            //for (int n = 0; n < proxyCount; ++n)
+            //{
+            //    quadplayProxyList.Add(new QuadplayProxy(nextID++));
+            //}
+
+            screenEnabled = !File.Exists("screen_off");
 
             RefreshRunningProxies();
-
-            foreach (var qproxy in quadplayProxyList)
-            {
-                qproxy.Start();
-            }
 
             RunServer(staringPort);
 
@@ -52,7 +51,14 @@ namespace QuadplayMobileProxy
                 {
                     while (true)
                     {
-                        RefreshRunningProxies();
+                        try
+                        {
+                            RefreshRunningProxies();
+                        }
+                        catch(Exception e)
+                        {
+                            Console.Error.WriteLine(e);
+                        }
 
                         Thread.Sleep(5000);
                     }
@@ -67,20 +73,31 @@ namespace QuadplayMobileProxy
                 {
                     for (int n = proxiesToChangeIP.Count - 1; n >= 0; --n)
                     {
-                        QuadplayProxy qproxy = null;
-
-                        foreach (var qp in quadplayProxyList)
+                        try
                         {
-                            if (qp.ID == proxiesToChangeIP[n])
+                            QuadplayProxy qproxy = null;
+
+                            lock (quadplayProxyList)
                             {
-                                qproxy = qp;
-                                break;
+                                foreach (var qp in quadplayProxyList)
+                                {
+                                    if (qp.ID == proxiesToChangeIP[n])
+                                    {
+                                        qproxy = qp;
+                                        break;
+                                    }
+                                }
                             }
+
+                            proxiesToChangeIP.RemoveAt(n);
+
+                            if (qproxy != null)
+                                qproxy.ChangeIP();
                         }
-
-                        proxiesToChangeIP.RemoveAt(n);
-
-                        qproxy.ChangeIP();
+                        catch (Exception e)
+                        {
+                            Console.Error.WriteLine(e);
+                        }
                     }
                 }
 
@@ -138,15 +155,28 @@ namespace QuadplayMobileProxy
 
                 if (!exists)
                 {
+                    bool added = false;
+
                     foreach (var qproxy in quadplayProxyList)
                     {
                         if (qproxy.InterfaceID == null)
                         {
                             qproxy.SetToInterface(infId);
-
                             Console.WriteLine("Binded Proxy: {0} To Interface: {1}", qproxy.ID, qproxy.InterfaceID);
-
+                            added = true;
                             break;
+                        }
+                    }
+
+                    if (!added)
+                    {
+                        var qproxy = new QuadplayProxy(nextID++);
+                        qproxy.SetToInterface(infId);
+                        qproxy.Start();
+
+                        lock (quadplayProxyList)
+                        {
+                            quadplayProxyList.Add(qproxy);
                         }
                     }
                 }
@@ -210,9 +240,15 @@ namespace QuadplayMobileProxy
                                 Boolean.TryParse(splitted[2], out screenEnabled);
 
                                 if (screenEnabled)
+                                {
                                     responseString = "OK;enabled";
+                                    File.Delete("screen_off");
+                                }
                                 else
+                                {
                                     responseString = "OK;disabled";
+                                    File.WriteAllText("screen_off", "ScreenOFF");
+                                }
                             }
                             else if (p1.Equals("check"))
                             {
@@ -228,7 +264,7 @@ namespace QuadplayMobileProxy
                         }
                         else if (request.RawUrl == "/proxylist")
                         {
-                        //Console.WriteLine("Received request to get proxies");
+                            //Console.WriteLine("Received request to get proxies");
 
                             StringWriter stringWriter = new StringWriter();
                             stringWriter.Write("AVAIL");
