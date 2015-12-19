@@ -10,31 +10,41 @@
  * of this example is to show the two callbacks OnReceiveRequest()
  * and OnReceiveResponse(), which are called by the base class ProxyLogic.
  */
+using QuadplayMobileProxy;
 using System;
 
 namespace TrotiNet.Example
 {
     public class TransparentProxy : ProxyLogic
     {
-        public TransparentProxy(HttpSocket clientSocket)
-            : base(clientSocket) { }
+        QuadplayProxy quadplayProxy;
 
-        static new public TransparentProxy CreateProxy(HttpSocket clientSocket)
+        public TransparentProxy(HttpSocket clientSocket, QuadplayProxy quadplayProxy)
+            : base(clientSocket)
         {
-            return new TransparentProxy(clientSocket);
+            this.quadplayProxy = quadplayProxy;
+        }
+
+        static new public TransparentProxy CreateProxy(HttpSocket clientSocket, QuadplayProxy quadplayProxy)
+        {
+            return new TransparentProxy(clientSocket, quadplayProxy);
         }
 
         protected override void OnReceiveRequest()
         {
-            Console.WriteLine("-> " + RequestLine + " from HTTP referer " +
-                RequestHeaders.Referer);
+            if (RequestLine.RequestLine.Contains("quadplayproxy.internal/changeip"))
+            {
+                Console.WriteLine("Got Internal ChangeIP Command! Proxy ID: " + quadplayProxy.ID);
+                quadplayProxy.ChangeIP();
+                AbortRequest();
+            }
+
+            Console.WriteLine("-> " + RequestLine + " from HTTP referer " + RequestHeaders.Referer);
         }
 
         protected override void OnReceiveResponse()
         {
-            Console.WriteLine("<- " + ResponseStatusLine +
-                " with HTTP Content-Length: " +
-                (ResponseHeaders.ContentLength ?? 0));
+            Console.WriteLine("<- " + ResponseStatusLine + " with HTTP Content-Length: " + (ResponseHeaders.ContentLength ?? 0));
         }
     }
 }

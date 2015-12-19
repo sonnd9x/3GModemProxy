@@ -186,7 +186,7 @@ namespace QuadplayMobileProxy
 
         public TransparentProxy CreateProxy(HttpSocket clientSocket)
         {
-            var proxy = new TransparentProxy(clientSocket);
+            var proxy = new TransparentProxy(clientSocket, this);
 
             IPAddress ip = GetIP();
             int tries = 0;
@@ -268,7 +268,7 @@ namespace QuadplayMobileProxy
                 {
                     if (ip != null)
                     {
-                        if (lastIpList.Contains(ip))
+                        if (lastIpList.Contains(ip) && false) //Ignore
                         {
                             Console.WriteLine("Current IP already seen. Changing. Proxy: {0} : IP: {1}", ID, ip);
                             changeIPForced = true;
