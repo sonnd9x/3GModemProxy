@@ -36,7 +36,13 @@ namespace TrotiNet.Example
             {
                 Console.WriteLine("Got Internal ChangeIP Command! Proxy ID: " + quadplayProxy.ID);
                 quadplayProxy.ChangeIP();
+
+                this.SocketBPClient.WriteAsciiLine(string.Format("HTTP/{0} 200 IP Changed", RequestLine.ProtocolVersion));
+                this.SocketBPClient.WriteAsciiLine(string.Empty);
+
                 AbortRequest();
+
+                throw new Exception("Abort Request");
             }
 
             Console.WriteLine("-> " + RequestLine + " from HTTP referer " + RequestHeaders.Referer);

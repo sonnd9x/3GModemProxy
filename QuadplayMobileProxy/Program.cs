@@ -24,6 +24,8 @@ namespace QuadplayMobileProxy
 
         static int nextID;
 
+        public static bool IPRangeTest;
+
         static void Main(string[] args)
         {
             Console.SetOut(new CustomTextWriter(Console.Out));
@@ -33,6 +35,9 @@ namespace QuadplayMobileProxy
 
             int staringPort = Int32.Parse(args[0]);
             Console.WriteLine("Listening start port: {0}", staringPort);
+
+            if (args.Length >= 2 && args[1] == "range-check")
+                IPRangeTest = true;
 
             //int proxyCount = Int32.Parse(args[1]);
             //Console.WriteLine("Starting {0} Proxies", proxyCount);
@@ -58,7 +63,7 @@ namespace QuadplayMobileProxy
                         {
                             RefreshRunningProxies();
                         }
-                        catch(Exception e)
+                        catch (Exception e)
                         {
                             Console.Error.WriteLine(e);
                         }

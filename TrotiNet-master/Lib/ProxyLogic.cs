@@ -543,7 +543,15 @@
             // We call OnReceiveRequest now because Connect() will
             // modify the request URI.
             State.NextStep = SendRequest;
-            OnReceiveRequest();
+
+            try
+            {
+                OnReceiveRequest();
+            }
+            catch
+            {
+                return;
+            }
 
             if (RequestLine.Method.Equals("CONNECT"))
             {

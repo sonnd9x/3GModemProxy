@@ -52,8 +52,62 @@ namespace QuadplayMobileProxy
 
         bool interfaceConnected;
 
+        public void Test()
+        {
+            IMbnInterfaceManager interfaceManager = null;
+            IMbnInterface inf = null;
+            IMbnSubscriberInformation subscriber = null;
+
+            try
+            {
+                interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
+                inf = interfaceManager.GetInterface(InterfaceID);
+                subscriber = inf.GetSubscriberInformation();
+
+                uint age = 0;
+                var array = inf.GetVisibleProviders(out age);
+
+                XmlDocument xml = new XmlDocument();
+                xml.LoadXml(mobileProfileTemplate);
+
+                xml["MBNProfile"]["SubscriberID"].InnerText = subscriber.SubscriberID;
+                xml["MBNProfile"]["SimIccID"].InnerText = subscriber.SimIccID;
+
+                //Console.WriteLine("Profile: " + xml.OuterXml);
+
+                IMbnConnection conn = null;
+
+                try
+                {
+                    conn = inf.GetConnection();
+
+                    //MBN_ACTIVATION_STATE state;
+                    //string profile;
+                    //conn.GetConnectionState(out state, out profile);
+
+                    uint requestId;
+                }
+                finally
+                {
+                    if (conn != null)
+                        Marshal.FinalReleaseComObject(conn);
+                }
+            }
+            finally
+            {
+                if (subscriber != null)
+                    Marshal.FinalReleaseComObject(subscriber);
+                if (inf != null)
+                    Marshal.FinalReleaseComObject(inf);
+                if (interfaceManager != null)
+                    Marshal.FinalReleaseComObject(interfaceManager);
+            }
+        }
+
         public void Start()
         {
+            Test();
+
             ChangeIP();
             proxyListener.Start(CreateProxy);
 
@@ -74,6 +128,9 @@ namespace QuadplayMobileProxy
                             changeIPForced = false;
 
                             DoProxyChange();
+
+                            changeIP = false;
+                            changeIPForced = false;
                         }
                         else
                         {
@@ -112,6 +169,27 @@ namespace QuadplayMobileProxy
                 }
             })
             { Name = "ProxyIPCheck-" + ID }.Start();
+
+            if (Program.IPRangeTest)
+            {
+                new Thread(() =>
+                {
+                    while (true)
+                    {
+                        try
+                        {
+                            ChangeIP(true);
+
+                            Thread.Sleep(1000 * 30);
+                        }
+                        catch (Exception e)
+                        {
+                            Console.Error.WriteLine(e);
+                        }
+                    }
+                })
+                { Name = "ProxyIPRange-" + ID }.Start();
+            }
         }
 
         void DoProxyChange()
@@ -207,35 +285,6 @@ namespace QuadplayMobileProxy
             return null;
         }
 
-        //void CheckForConnectionThread()
-        //{
-        //    int fails = 0;
-
-        //    while (true)
-        //    {
-        //        if (interfaceConnected)
-        //        {
-        //            if (!CheckForInternetConnection())
-        //            {
-        //                ++fails;
-        //            }
-        //            else
-        //            {
-        //                fails = 0;
-        //            }
-
-        //            if (fails > 2)
-        //            {
-        //                ChangeIP(true);
-        //                Console.WriteLine("No internect connection detected. Restarting. | Proxy ID: {0}", ID);
-        //                Thread.Sleep(10000);
-        //            }
-        //        }
-
-        //        Thread.Sleep(1000);
-        //    }
-        //}
-
         public void ChangeIP()
         {
             ChangeIP(false);
@@ -249,7 +298,7 @@ namespace QuadplayMobileProxy
             {
                 deltaTime = DateTime.Now - lastChangeIPTime;
 
-                if (!forced && deltaTime < TimeSpan.FromSeconds(5))
+                if (!forced && deltaTime < TimeSpan.FromSeconds(30))
                     return;
 
                 lastChangeIPTime = DateTime.Now;
@@ -258,6 +307,8 @@ namespace QuadplayMobileProxy
         }
 
         List<string> lastIpList = new List<string>();
+
+        static object ipLogLocker = new object();
 
         void DoIPCheck()
         {
@@ -268,6 +319,11 @@ namespace QuadplayMobileProxy
                 {
                     if (ip != null)
                     {
+                        lock (ipLogLocker)
+                        {
+                            File.AppendAllLines("IP_Log.txt", new string[] { ip });
+                        }
+
                         if (lastIpList.Contains(ip) && false) //Ignore
                         {
                             Console.WriteLine("Current IP already seen. Changing. Proxy: {0} : IP: {1}", ID, ip);
