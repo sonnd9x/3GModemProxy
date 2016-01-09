@@ -64,8 +64,15 @@ namespace QuadplayMobileProxy
                 inf = interfaceManager.GetInterface(InterfaceID);
                 subscriber = inf.GetSubscriberInformation();
 
+                uint outCode = 0;
+                inf.ScanNetwork(out outCode);
+
                 uint age = 0;
                 var array = inf.GetVisibleProviders(out age);
+
+                var provider = inf.GetHomeProvider();
+
+                //inf.SetPreferredProviders(new MBN_PROVIDER[] { plusProvider }, out outCode);
 
                 XmlDocument xml = new XmlDocument();
                 xml.LoadXml(mobileProfileTemplate);
