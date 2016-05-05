@@ -60,6 +60,8 @@ namespace TrotiNet
         public delegate void MessagePacketHandler(byte[] packet,
             uint offset, uint nb_bytes);
 
+        public DateTime CreationTime { get; private set; }
+
         /// <summary>
         /// Wrap a Socket instance into a HttpSocket instance
         /// </summary>
@@ -69,6 +71,8 @@ namespace TrotiNet
 
             Buffer = new byte[BufferSize];
             sb = new StringBuilder(128);
+
+            CreationTime = DateTime.Now;
         }
 
         /// <summary>

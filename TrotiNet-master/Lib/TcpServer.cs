@@ -223,27 +223,43 @@ namespace TrotiNet
         /// </remarks>
         void CheckSockets(object eventState)
         {
+            Console.WriteLine("Starting Clean Sockets: {0}", ConnectedSockets.Count);
+
             try
             {
                 lock (ConnectedSockets)
                 {
+                    var toRemove = new List<int>();
+
                     foreach (var kv in ConnectedSockets)
                     {
                         try
                         {
                             int id = kv.Key;
                             HttpSocket state = kv.Value;
+
+                            if (DateTime.Now - state.CreationTime > TimeSpan.FromMinutes(5))
+                            {
+                                //Console.WriteLine("Closing Old Socket: {0} {1}", id, state.CreationTime);
+                                state.CloseSocket();
+                            }
+
                             if (state == null || state.IsSocketDead())
-                                ConnectedSockets.Remove(id);
+                                toRemove.Add(id);
                         }
                         catch (Exception e)
                         {
                             log.Error(e);
                         }
                     }
+
+                    foreach (var id in toRemove)
+                        ConnectedSockets.Remove(id);
                 }
             }
             catch { }
+
+            Console.WriteLine("Finished Clean Sockets: {0}", ConnectedSockets.Count);
         }
 
         /// <summary>
