@@ -113,7 +113,7 @@ namespace QuadplayMobileProxy
 
         public void Start()
         {
-            Test();
+            //Test();
 
             ChangeIP();
             proxyListener.Start(CreateProxy);

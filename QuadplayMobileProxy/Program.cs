@@ -287,6 +287,21 @@ namespace QuadplayMobileProxy
 
                             responseString = stringWriter.ToString();
                         }
+                        else if (request.RawUrl == "/nighttransfer")
+                        {
+                            TimeSpan start = new TimeSpan(0, 30, 0);
+                            TimeSpan end = new TimeSpan(8, 30, 0);
+                            TimeSpan now = DateTime.Now.TimeOfDay;
+
+                            if ((now > start) && (now < end))
+                            {
+                                responseString = "allowed";
+                            }
+                            else
+                            {
+                                responseString = "wait";
+                            }
+                        }
                         else
                         {
                             Console.WriteLine("Received bad request: {0}", request.RawUrl);

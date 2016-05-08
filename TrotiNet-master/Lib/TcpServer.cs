@@ -238,7 +238,7 @@ namespace TrotiNet
                             int id = kv.Key;
                             HttpSocket state = kv.Value;
 
-                            if (DateTime.Now - state.CreationTime > TimeSpan.FromMinutes(5))
+                            if (DateTime.Now - state.CreationTime > TimeSpan.FromMinutes(10))
                             {
                                 //Console.WriteLine("Closing Old Socket: {0} {1}", id, state.CreationTime);
                                 state.CloseSocket();
