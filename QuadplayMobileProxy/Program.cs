@@ -15,6 +15,8 @@ namespace QuadplayMobileProxy
     {
         //public static IMbnInterfaceManager InterfaceManager { get; private set; }
 
+        public static MyConfig Config { get; private set; }
+
         static Random random = new Random();
 
         static List<int> proxiesToChangeIP = new List<int>();
@@ -29,6 +31,9 @@ namespace QuadplayMobileProxy
         static void Main(string[] args)
         {
             Console.SetOut(new CustomTextWriter(Console.Out));
+            Console.WriteLine("Usage: <staring port> [<proxy count(not used)> | range-check]");
+
+            Config = MyConfig.Load();
 
             //IMbnInterfaceManager interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
             //InterfaceManager = interfaceManager;
@@ -52,7 +57,6 @@ namespace QuadplayMobileProxy
             screenEnabled = !File.Exists("screen_off");
 
             RefreshRunningProxies();
-
             RunServer(staringPort);
 
             new Thread(() =>
@@ -289,11 +293,7 @@ namespace QuadplayMobileProxy
                         }
                         else if (request.RawUrl == "/nighttransfer")
                         {
-                            TimeSpan start = new TimeSpan(0, 30, 0);
-                            TimeSpan end = new TimeSpan(8, 30, 0);
-                            TimeSpan now = DateTime.Now.TimeOfDay;
-
-                            if ((now > start) && (now < end))
+                            if (IsNightTransferAllowed())
                             {
                                 responseString = "allowed";
                             }
@@ -329,6 +329,22 @@ namespace QuadplayMobileProxy
             {
                 Name = "ServerListener",
             }.Start();
+        }
+
+        static bool IsNightTransferAllowed()
+        {
+            TimeSpan start = Config.TimeNightTransferStart;
+            TimeSpan end = Config.TimeNightTransferEnd;
+            TimeSpan now = DateTime.Now.TimeOfDay;
+
+            if ((now > start) && (now < end))
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         class CustomTextWriter : TextWriter
