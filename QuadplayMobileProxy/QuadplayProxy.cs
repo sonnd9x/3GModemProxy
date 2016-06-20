@@ -317,9 +317,11 @@ namespace QuadplayMobileProxy
 
         static object ipLogLocker = new object();
 
+        int nextIpCheckWaitTime = 20;
+
         void DoIPCheck()
         {
-            for (int n = 0; n < 5; ++n)
+            for (int n = 0; n < nextIpCheckWaitTime; ++n)
             {
                 string ip;
                 if (CheckForInternetConnection(out ip))
@@ -347,11 +349,14 @@ namespace QuadplayMobileProxy
                                 lastIpList.RemoveAt(0);
                             }
 
+                            nextIpCheckWaitTime = 20;
+
                             return;
                         }
                     }
                 }
 
+                ++nextIpCheckWaitTime;
                 Console.WriteLine("No Connection Detected. Proxy: {0}", ID);
                 Thread.Sleep(1000);
             }
