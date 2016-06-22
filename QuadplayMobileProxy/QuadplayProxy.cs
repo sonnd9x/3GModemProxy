@@ -356,7 +356,7 @@ namespace QuadplayMobileProxy
                     }
                 }
 
-                ++nextIpCheckWaitTime;
+                nextIpCheckWaitTime += 3;
                 Console.WriteLine("No Connection Detected. Proxy: {0}", ID);
                 Thread.Sleep(1000);
             }
