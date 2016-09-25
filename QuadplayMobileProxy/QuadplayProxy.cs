@@ -219,7 +219,7 @@ namespace QuadplayMobileProxy
                 Console.WriteLine("Error Disconnecting | Proxy ID: {0}", ID);
             }
 
-            Thread.Sleep(6000);
+            Thread.Sleep(10000);
 
             try
             {
@@ -333,7 +333,7 @@ namespace QuadplayMobileProxy
                             File.AppendAllLines("IP_Log.txt", new string[] { ip });
                         }
 
-                        if (lastIpList.Contains(ip) && false) //Ignore
+                        if (lastIpList.Contains(ip))
                         {
                             Console.WriteLine("Current IP already seen. Changing. Proxy: {0} : IP: {1}", ID, ip);
                             changeIPForced = true;
@@ -344,7 +344,7 @@ namespace QuadplayMobileProxy
                             Console.WriteLine("New IP looks good. Proxy: {0} : IP: {1}", ID, ip);
 
                             lastIpList.Add(ip);
-                            while (lastIpList.Count > 15)
+                            while (lastIpList.Count > 5)
                             {
                                 lastIpList.RemoveAt(0);
                             }
