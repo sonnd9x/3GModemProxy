@@ -8,11 +8,14 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using NLog;
 
 namespace QuadplayMobileProxy
 {
     public class Program
     {
+        static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         //public static IMbnInterfaceManager InterfaceManager { get; private set; }
 
         public static MyConfig Config { get; private set; }
@@ -30,8 +33,8 @@ namespace QuadplayMobileProxy
 
         static void Main(string[] args)
         {
-            Console.SetOut(new CustomTextWriter(Console.Out));
-            Console.WriteLine("Usage: <staring port> [<proxy count(not used)> | range-check]");
+            //Console.SetOut(new CustomTextWriter(Console.Out));
+            logger.Info("Usage: <staring port> [<proxy count(not used)> | range-check]");
 
             Config = MyConfig.Load();
 
@@ -39,7 +42,7 @@ namespace QuadplayMobileProxy
             //InterfaceManager = interfaceManager;
 
             int staringPort = Int32.Parse(args[0]);
-            Console.WriteLine("Listening start port: {0}", staringPort);
+            logger.Info($"Listening start port: {staringPort}");
 
             if (args.Length >= 2 && args[1] == "range-check")
                 IPRangeTest = true;
@@ -69,7 +72,7 @@ namespace QuadplayMobileProxy
                         }
                         catch (Exception e)
                         {
-                            Console.Error.WriteLine(e);
+                            logger.Error(e);
                         }
 
                         Thread.Sleep(5000);
@@ -108,7 +111,7 @@ namespace QuadplayMobileProxy
                         }
                         catch (Exception e)
                         {
-                            Console.Error.WriteLine(e);
+                            logger.Error(e);
                         }
                     }
                 }
@@ -176,7 +179,7 @@ namespace QuadplayMobileProxy
                             if (qproxy.InterfaceID == null)
                             {
                                 qproxy.SetToInterface(infId);
-                                Console.WriteLine("Binded Proxy: {0} To Interface: {1}", qproxy.ID, qproxy.InterfaceID);
+                                logger.Info($"Binded Proxy: {qproxy.ID} To Interface: {qproxy.InterfaceID}");
                                 added = true;
                                 break;
                             }
@@ -201,10 +204,10 @@ namespace QuadplayMobileProxy
         static void RunServer(int port)
         {
             HttpListener listener = new HttpListener();
-            listener.Prefixes.Add(String.Format("http://*:{0}/", port));
+            listener.Prefixes.Add($"http://*:{port}/");
             listener.Start();
 
-            Console.WriteLine("Server listening on port: {0}", port);
+            logger.Info($"Server listening on port: {port}");
 
             new Thread(() =>
             {
@@ -224,7 +227,7 @@ namespace QuadplayMobileProxy
                         if (request.RawUrl.StartsWith("/changeip"))
                         {
                             string[] splitted = request.RawUrl.Split('?');
-                            int proxyId = Int32.Parse(splitted[1]);
+                            int proxyId = int.Parse(splitted[1]);
 
                             //Console.WriteLine("Received request to change ip. Proxy ID: {0}", proxyId);
 
@@ -233,26 +236,26 @@ namespace QuadplayMobileProxy
                                 proxiesToChangeIP.Add(proxyId);
                             }
 
-                            string number = quadplayProxyList.Where(el => el.ID == proxyId).FirstOrDefault().GetMobileNumber();
+                            string number = quadplayProxyList.FirstOrDefault(el => el.ID == proxyId).GetMobileNumber();
 
                             responseString = "OK;10000;" + number;
                         }
                         else if (request.RawUrl.StartsWith("/getmobilenumber"))
                         {
                             string[] splitted = request.RawUrl.Split('?');
-                            int proxyId = Int32.Parse(splitted[1]);
+                            int proxyId = int.Parse(splitted[1]);
 
-                            string number = quadplayProxyList.Where(el => el.ID == proxyId).FirstOrDefault().GetMobileNumber();
+                            string number = quadplayProxyList.FirstOrDefault(el => el.ID == proxyId).GetMobileNumber();
 
                             responseString = "OK;" + number;
                         }
                         else if (request.RawUrl.StartsWith("/screenon"))
                         {
                             string[] splitted = request.RawUrl.Split('?');
-                            string p1 = splitted[1].ToString();
+                            string p1 = splitted[1];
                             if (p1.Equals("set"))
                             {
-                                Boolean.TryParse(splitted[2], out screenEnabled);
+                                bool.TryParse(splitted[2], out screenEnabled);
 
                                 if (screenEnabled)
                                 {
@@ -304,14 +307,14 @@ namespace QuadplayMobileProxy
                         }
                         else
                         {
-                            Console.WriteLine("Received bad request: {0}", request.RawUrl);
+                            logger.Warn($"Received bad request: {request.RawUrl}");
 
                             responseString = "WRONG_URL";
                         }
 
                         response.StatusCode = 200;
 
-                        byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseString);
+                        byte[] buffer = Encoding.UTF8.GetBytes(responseString);
                         response.ContentLength64 = buffer.Length;
 
                         response.OutputStream.Write(buffer, 0, buffer.Length);
@@ -319,7 +322,7 @@ namespace QuadplayMobileProxy
                     }
                     catch (Exception ex)
                     {
-                        Console.Error.WriteLine(ex);
+                        logger.Error(ex);
                     }
                 }
 
@@ -363,7 +366,7 @@ namespace QuadplayMobileProxy
 
             public override void WriteLine(string value)
             {
-                original.WriteLine("[{0}] > {1}", DateTime.Now.ToString("HH:mm:ss:fff"), value);
+                original.WriteLine($"[{DateTime.Now.ToString("HH:mm:ss:fff")}] > {value}");
             }
         }
     }

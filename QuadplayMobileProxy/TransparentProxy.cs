@@ -12,11 +12,14 @@
  */
 using QuadplayMobileProxy;
 using System;
+using NLog;
 
 namespace TrotiNet.Example
 {
     public class TransparentProxy : ProxyLogic
     {
+        static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         QuadplayProxy quadplayProxy;
 
         public TransparentProxy(HttpSocket clientSocket, QuadplayProxy quadplayProxy)
@@ -34,7 +37,8 @@ namespace TrotiNet.Example
         {
             if (RequestLine.RequestLine.Contains("quadplayproxy.internal/changeip"))
             {
-                Console.WriteLine("Got Internal ChangeIP Command! Proxy ID: " + quadplayProxy.ID);
+                logger.Info($"Got Internal ChangeIP Command! Proxy ID: {quadplayProxy.ID}");
+
                 quadplayProxy.ChangeIP();
 
                 this.SocketBPClient.WriteAsciiLine(string.Format("HTTP/{0} 200 IP Changed", RequestLine.ProtocolVersion));
@@ -45,12 +49,14 @@ namespace TrotiNet.Example
                 throw new Exception("Abort Request");
             }
 
-            Console.WriteLine("-> " + RequestLine + " from HTTP referer " + RequestHeaders.Referer);
+            //logger.Trace("-> " + RequestLine + " from HTTP referer " + RequestHeaders.Referer);
+            logger.Trace($"[{quadplayProxy.ID}] -> {RequestLine} from HTTP referer {RequestHeaders.Referer}");
         }
 
         protected override void OnReceiveResponse()
         {
-            Console.WriteLine("<- " + ResponseStatusLine + " with HTTP Content-Length: " + (ResponseHeaders.ContentLength ?? 0));
+            //logger.Trace("<- " + ResponseStatusLine + " with HTTP Content-Length: " + (ResponseHeaders.ContentLength ?? 0));
+            logger.Trace($"[{quadplayProxy.ID}] <- {ResponseStatusLine} with HTTP Content-Length: {(ResponseHeaders.ContentLength ?? 0)}");
         }
     }
 }

@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using NLog;
 using TrotiNet;
 using TrotiNet.Example;
 
@@ -19,6 +20,8 @@ namespace QuadplayMobileProxy
 {
     public class QuadplayProxy
     {
+        static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         enum ActionType
         {
             Connect,
@@ -146,7 +149,7 @@ namespace QuadplayMobileProxy
                     }
                     catch (Exception e)
                     {
-                        Console.Error.WriteLine(e);
+                        logger.Error(e);
                     }
                 }
             })
@@ -171,7 +174,7 @@ namespace QuadplayMobileProxy
                     }
                     catch (Exception e)
                     {
-                        Console.Error.WriteLine(e);
+                        logger.Error(e);
                     }
                 }
             })
@@ -191,7 +194,7 @@ namespace QuadplayMobileProxy
                         }
                         catch (Exception e)
                         {
-                            Console.Error.WriteLine(e);
+                            logger.Error(e);
                         }
                     }
                 })
@@ -201,7 +204,7 @@ namespace QuadplayMobileProxy
 
         void DoProxyChange()
         {
-            Console.WriteLine("Changing IP | Proxy ID: {0}", ID);
+            logger.Debug($"Changing IP, Proxy ID: {ID}");
 
             proxyListener.IsPaused = true;
 
@@ -216,7 +219,7 @@ namespace QuadplayMobileProxy
             catch (Exception ex)
             {
                 //Console.WriteLine("Error Disconnecting: {0}", ex.ToString());
-                Console.WriteLine("Error Disconnecting | Proxy ID: {0}", ID);
+                logger.Debug($"Error Disconnecting, Proxy ID: {ID}");
             }
 
             Thread.Sleep(10000);
@@ -227,7 +230,7 @@ namespace QuadplayMobileProxy
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error Connecting: {0}", ex.ToString());
+                logger.Debug($"Error Connecting: {ex}");
             }
 
             Thread.Sleep(5000);
@@ -247,7 +250,7 @@ namespace QuadplayMobileProxy
 
             if (ip == null)
             {
-                Console.WriteLine("Couldnt get interface IP! | Proxy ID: {0} | Time: {1}", ID, (int)deltaTime.TotalSeconds);
+                logger.Debug($"Couldnt get interface IP! Proxy ID: {ID}, Time: '{(int) deltaTime.TotalSeconds}'");
                 ChangeIP(true);
             }
             else
@@ -258,7 +261,7 @@ namespace QuadplayMobileProxy
                 proxyListener.IsPaused = false;
                 //proxyListener.ReconnectAllSockets(ip);
 
-                Console.WriteLine("IP Changed! | Proxy ID: {0} | Time: {1} | Bind: {2}", ID, (int)deltaTime.TotalSeconds, ip);
+                logger.Debug($"IP Changed! Proxy ID: {ID}, Time: '{(int) deltaTime.TotalSeconds}', Bind: '{ip}'");
 
                 //new Thread(() =>
                 //{
@@ -335,13 +338,13 @@ namespace QuadplayMobileProxy
 
                         if (lastIpList.Contains(ip))
                         {
-                            Console.WriteLine("Current IP already seen. Changing. Proxy: {0} : IP: {1}", ID, ip);
+                            logger.Warn($"Current IP already seen. Changing. Proxy: {ID} : IP: {ip}");
                             changeIPForced = true;
                             return;
                         }
                         else
                         {
-                            Console.WriteLine("New IP looks good. Proxy: {0} : IP: {1}", ID, ip);
+                            logger.Info($"New IP looks good. Proxy: {ID} : IP: {ip}");
 
                             lastIpList.Add(ip);
                             while (lastIpList.Count > 5)
@@ -357,11 +360,11 @@ namespace QuadplayMobileProxy
                 }
 
                 nextIpCheckWaitTime += 3;
-                Console.WriteLine("No Connection Detected. Proxy: {0}", ID);
+                logger.Debug($"No Connection Detected. Proxy: {ID}");
                 Thread.Sleep(1000);
             }
 
-            Console.WriteLine("Too many failed connections. Changing. Proxy: {0}", ID);
+            logger.Warn($"Too many failed connections. Changing. Proxy: {ID}");
             changeIPForced = true;
         }
 
@@ -411,7 +414,7 @@ namespace QuadplayMobileProxy
                             HttpWebRequest request = (HttpWebRequest)WebRequest.Create("http://checkip.dyndns.org");
                             request.ServicePoint.BindIPEndPointDelegate = new BindIPEndPoint((ServicePoint servicePoint, IPEndPoint remoteEndPoint, int retryCount) =>
                                 {
-                                    Console.WriteLine("BindIPEndpoint called. Binding to: {0} Retry: {1}", ip, retryCount);
+                                    logger.Trace($"BindIPEndpoint called. Binding to: {ip}, Retry: {retryCount}");
 
                                     if (retryCount > 3)
                                         Thread.Sleep(500);
@@ -428,7 +431,7 @@ namespace QuadplayMobileProxy
                             {
                                 string response = sr.ReadToEnd().Trim();
 
-                                Console.WriteLine("Got chceck response. Proxy: {0} : Response: {1}", ID, response);
+                                logger.Trace($"Got chceck response. Proxy: {ID}, Response: {response}");
 
                                 string[] a = response.Split(':');
                                 string a2 = a[1].Substring(1);
@@ -441,11 +444,11 @@ namespace QuadplayMobileProxy
                         }
                         catch (ThreadAbortException)
                         {
-                            Console.WriteLine("Aborting connection check. Proxy: {0}", ID);
+                            logger.Trace($"Aborting connection check. Proxy: {ID}");
                         }
                         catch (Exception e)
                         {
-                            Console.Error.WriteLine(e);
+                            logger.Warn(e);
                         }
                     });
 
@@ -459,7 +462,7 @@ namespace QuadplayMobileProxy
                     }
                     catch (Exception e)
                     {
-                        Console.Error.WriteLine(e);
+                        logger.Warn(e);
                     }
 
                     externalIP = detectedIp;
@@ -564,7 +567,7 @@ namespace QuadplayMobileProxy
 
             try
             {
-                interfaceManager = (IMbnInterfaceManager)new MbnInterfaceManager();
+                interfaceManager = (IMbnInterfaceManager) new MbnInterfaceManager();
                 inf = interfaceManager.GetInterface(InterfaceID);
                 subscriber = inf.GetSubscriberInformation();
 
@@ -572,11 +575,14 @@ namespace QuadplayMobileProxy
                 {
                     if (ob != null)
                     {
-                        return (string)ob;
+                        return (string) ob;
                     }
                 }
             }
-            catch { }
+            catch (Exception e)
+            {
+                logger.Warn(e);
+            }
             finally
             {
                 if (subscriber != null)

@@ -15,6 +15,7 @@ namespace QuadplayMobileProxy
         static XmlSerializer serializer = new XmlSerializer(typeof(MyConfig));
 
         public string NightTransferStart { get; set; }
+
         public string NightTransferEnd { get; set; }
 
         public TimeSpan TimeNightTransferStart
